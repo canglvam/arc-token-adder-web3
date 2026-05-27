@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>一键添加 Arc 测试代币</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f4f4f9; }
+        .wallet-select-container { margin: 20px auto; padding: 20px; background: #e3f2fd; width: 600px; border-radius: 8px; border: 2px solid #2196f3; }
+        select { padding: 10px; font-size: 16px; width: 250px; border-radius: 4px; border: 1px solid #ccc; margin-left: 10px; }
+        .token-card { margin: 15px auto; padding: 20px; background: white; width: 600px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .token-info { text-align: left; }
+        .token-info p { margin: 5px 0; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #f6851b; color: white; border: none; border-radius: 6px; transition: 0.2s; }
+        button:hover { background-color: #e2761b; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <h2>🦊 添加 Arc 测试网代币到你的钱包</h2>
+    
+    <div class="wallet-select-container">
+        <label for="walletSelector" style="font-size: 18px; font-weight: bold;">步骤 1：选择要连接的钱包</label>
+        <select id="walletSelector">
+            <option value="">正在努力寻找钱包插件...</option>
+        </select>
+        <p style="font-size: 13px; color: #555; margin-top: 10px;">(系统已探测出你安装的所有钱包，请在下拉框中自由切换)</p>
+    </div>
+
+    <h3 style="margin-top: 30px; color: #333;">步骤 2：选择要添加的代币</h3>
+
+    <div class="token-card">
+        <div class="token-info">
+            <p>代币名称：<strong>cirBTC</strong> (Circle Wrapped Bitcoin)</p>
+            <p style="font-size: 14px; color: #666;">合约：0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF</p>
+        </div>
+        <button onclick="addToken('0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF', 'cirBTC', 8)">一键添加</button>
+    </div>
+
+    <div class="token-card">
+        <div class="token-info">
+            <p>代币名称：<strong>USDC</strong></p>
+            <p style="font-size: 14px; color: #666;">合约：0x3600000000000000000000000000000000000000</p>
+        </div>
+        <button onclick="addToken('0x3600000000000000000000000000000000000000', 'USDC', 6)">一键添加</button>
+    </div>
+
+    <div class="token-card">
+        <div class="token-info">
+            <p>代币名称：<strong>EURC</strong></p>
+            <p style="font-size: 14px; color: #666;">合约：0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a</p>
+        </div>
+        <button onclick="addToken('0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a', 'EURC', 6)">一键添加</button>
+    </div>
+
+    <div class="token-card">
+        <div class="token-info">
+            <p>代币名称：<strong>MTK</strong> (MyToken)</p>
+            <p style="font-size: 14px; color: #666;">合约：0xFd6114c22EdB1F18cA252070a8cdE65B29b87250</p>
+        </div>
+        <button onclick="addToken('0xFd6114c22EdB1F18cA252070a8cdE65B29b87250', 'MTK', 18)">一键添加</button>
+    </div>
+
+    <script>
+        const providers = {};
+
+        function addProvider(name, provider) {
+            if (!providers[name]) {
+                providers[name] = provider;
+                updateWalletSelector();
+            }
+        }
+
+        window.addEventListener("eip6963:announceProvider", (e) => {
+            addProvider(e.detail.info.name, e.detail.provider);
+        });
+
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+            try {
+                checkCount++;
+                window.dispatchEvent(new Event("eip6963:requestProvider"));
+                
+                if (window.ethereum) {
+                    if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
+                        window.ethereum.providers.forEach(p => {
+                            if (p.isMetaMask) addProvider("MetaMask", p);
+                            else if (p.isOkxWallet) addProvider("OKX Wallet", p);
+                            else if (p.isCoinbaseWallet) addProvider("Coinbase Wallet", p);
+                            else addProvider("Other Wallet", p);
+                        });
+                    } else {
+                        let name = "默认钱包";
+                        if (window.ethereum.isMetaMask) name = "MetaMask";
+                        if (window.ethereum.isOkxWallet) name = "OKX Wallet";
+                        if (window.ethereum.isCoinbaseWallet) name = "Coinbase";
+                        addProvider(name, window.ethereum);
+                    }
+                }
+                
+                if (Object.keys(providers).length > 0 || checkCount > 10) {
+                    clearInterval(checkInterval);
+                    if (Object.keys(providers).length === 0) {
+                        document.getElementById("walletSelector").innerHTML = "<option value=''>检测超时，但你仍可直接点击下方按钮尝试强制添加</option>";
+                    }
+                }
+            } catch(e) {
+                console.error("检测钱包时发生错误，可能是冲突导致:", e);
+                if (checkCount > 10) clearInterval(checkInterval);
+            }
+        }, 500);
+
+        function updateWalletSelector() {
+            const selector = document.getElementById("walletSelector");
+            const currentSelection = selector.value;
+            selector.innerHTML = "";
+            for (const name in providers) {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.text = name;
+                selector.appendChild(opt);
+            }
+            if (currentSelection && providers[currentSelection]) {
+                selector.value = currentSelection;
+            }
+        }
+
+        async function addToken(address, symbol, decimals) {
+            const selector = document.getElementById("walletSelector");
+            const selectedName = selector.value;
+            let provider = providers[selectedName];
+
+            if (!provider && window.ethereum) {
+                provider = window.ethereum;
+            }
+
+            if (!provider) {
+                alert("完全找不到钱包！请确保小狐狸/OKX插件亮起，并且没有在无痕模式中。");
+                return;
+            }
+
+            try {
+                await provider.request({ method: 'eth_requestAccounts' });
+                const wasAdded = await provider.request({
+                    method: 'wallet_watchAsset',
+                    params: { type: 'ERC20', options: { address: address, symbol: symbol, decimals: decimals } }
+                });
+                if (wasAdded) alert('🎉 ' + symbol + ' 成功添加到钱包！');
+            } catch (error) {
+                alert('添加出现问题: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
